@@ -11,15 +11,15 @@ export const Counter = () => {
       vars={{
         borderColor: 'rebeccapurple',
         backgroundColor: 'papayawhip',
-        underlimitValueColor: 'magenta',
-        overlimitValueColor: 'darkred',
+        underLimitValueColor: 'magenta',
+        overLimitValueColor: 'darkred',
       }}
       className={styles.root}
     >
       <button className={styles.button} onClick={() => setCount((c) => c - 1)}>
         -
       </button>
-      <span className={styles.count({ overlimit: count > 5 })}>{count}</span>
+      <span className={styles.count({ overLimit: count > 5 })}>{count}</span>
       <button className={styles.button} onClick={() => setCount((c) => c + 1)}>
         +
       </button>

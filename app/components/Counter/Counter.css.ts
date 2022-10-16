@@ -5,9 +5,10 @@ import { MapLeafNodes } from '@vanilla-extract/private';
 export const theme = createTheme({
   borderColor: 'transparent',
   backgroundColor: 'transparent',
-  underlimitValueColor: 'green',
-  overlimitValueColor: 'red',
+  underLimitValueColor: 'green',
+  overLimitValueColor: 'red',
 });
+const [, vars] = theme;
 
 export const root = style({
   display: 'flex',
@@ -18,15 +19,15 @@ export const root = style({
   lineHeight: '1em',
   fontFamily: 'Comic Sans MS',
   padding: 20,
-  border: `1px solid ${theme[1].borderColor}`,
-  backgroundColor: theme[1].backgroundColor,
+  border: `1px solid ${vars.borderColor}`,
+  backgroundColor: vars.backgroundColor,
 });
 
 export const count = recipe({
   variants: {
-    overlimit: {
-      true: { color: theme[1].overlimitValueColor },
-      false: { color: theme[1].underlimitValueColor },
+    overLimit: {
+      true: { color: vars.overLimitValueColor },
+      false: { color: vars.underLimitValueColor },
     },
   },
 });

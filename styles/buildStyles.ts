@@ -49,7 +49,7 @@ const buildRegistry = () => {
     .map((path) => {
       return `export * as ${basename(path, '.css.ts')} from "../${dirname(
         path
-      )}/${basename(path, '.ts')}"`;
+      )}/${basename(path, '.ts')}";`;
     })
     .join('\n');
 
