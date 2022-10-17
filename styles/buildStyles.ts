@@ -1,5 +1,5 @@
 import { watch } from 'chokidar';
-import { writeFileSync } from 'fs';
+import { writeFileSync, utimesSync } from 'fs';
 import { basename, dirname } from 'path';
 import { build as buildBundle } from 'tsup';
 import process from 'process';
@@ -56,7 +56,7 @@ const buildRegistry = () => {
   writeFileSync('styles/registry.ts', contents, { encoding: 'utf8' });
 };
 
-watch('app/**/*.css.ts', { persistent: watchMode })
+const watcher = watch('app/**/*.css.ts', { persistent: watchMode })
   .on('add', (path) => {
     paths.push(path);
     buildRegistry();
@@ -84,3 +84,11 @@ watch('app/**/*.css.ts', { persistent: watchMode })
       ],
     });
   });
+
+if (watchMode) {
+  watcher.on('change', () => {
+    // Sometimes watch can break if there's a compilation error. Touch the registry to force a rebuild.
+    const time = new Date();
+    utimesSync('styles/registry.ts', time, time);
+  });
+}
