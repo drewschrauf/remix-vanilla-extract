@@ -1,6 +1,5 @@
 import { style, createTheme } from '@vanilla-extract/css';
 import { recipe } from '@vanilla-extract/recipes';
-import { MapLeafNodes } from '@vanilla-extract/private';
 
 export const theme = createTheme({
   borderColor: 'transparent',

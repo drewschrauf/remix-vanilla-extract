@@ -1,4 +1,5 @@
 import { style } from '@vanilla-extract/css';
+import { font } from '~/common/Common.css';
 
 export const root = style({
   display: 'flex',
@@ -8,5 +9,5 @@ export const root = style({
 
 export const heading = style({
   fontSize: 24,
-  fontFamily: 'Comic Sans MS',
+  fontFamily: font,
 });

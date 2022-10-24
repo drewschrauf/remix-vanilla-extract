@@ -1,4 +1,5 @@
 /app/styles
+/.styles
 /styles/registry.ts
 
 node_modules

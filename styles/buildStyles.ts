@@ -1,11 +1,43 @@
 import { watch } from 'chokidar';
-import { writeFileSync, utimesSync } from 'fs';
+import { writeFile } from 'fs/promises';
 import { basename, dirname } from 'path';
 import { build as buildBundle } from 'tsup';
-import process from 'process';
+import process, { exit } from 'process';
 import { vanillaExtractPlugin } from '@vanilla-extract/esbuild-plugin';
+import type { Options as CopyFilesOptions } from 'copyfiles';
+import copyfilesActual from 'copyfiles';
+
+const ASSET_FILE_TYPES = ['woff', 'png'];
 
 const watchMode = process.argv.includes('--watch');
+const copyFilesOnly = process.argv.includes('--copy-files-only');
+
+const copyfiles = (paths: string[], options: CopyFilesOptions) =>
+  new Promise<void>((resolve, reject) =>
+    copyfilesActual(paths, options, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    })
+  );
+
+if (copyFilesOnly) {
+  copyfiles(
+    [
+      ...ASSET_FILE_TYPES.map((ft) => `.styles/*.${ft}`),
+      'public/build/_assets',
+    ],
+    {
+      flat: true,
+      up: true,
+      soft: true,
+    }
+  ).then(() => {
+    exit(0);
+  });
+}
 
 let ready = false;
 const paths: string[] = [];
@@ -28,67 +60,94 @@ const findDuplicatePaths = () => {
   return dups;
 };
 
-const buildRegistry = () => {
-  if (!ready) return;
+const build = async () => {
+  try {
+    if (!ready) return;
 
-  const dups = findDuplicatePaths();
-  if (dups.length !== 0) {
-    console.error(`Found css file with duplicate name "${dups[0].base}"`);
-    console.error(`    ${dups[0].path}`);
-    console.error(`    ${dups[1].path}`);
-    console.error('Not rebuilding registry');
+    const dups = findDuplicatePaths();
+    if (dups.length !== 0) {
+      console.error(`Found css file with duplicate name "${dups[0].base}"`);
+      console.error(`    ${dups[0].path}`);
+      console.error(`    ${dups[1].path}`);
+      console.error('Not rebuilding registry');
 
-    if (!watchMode) {
-      process.exit(1);
+      throw new Error('Duplicates found');
     }
 
-    return;
-  }
+    const contents = paths
+      .map((path) => {
+        return `export * as ${basename(path, '.css.ts')} from "../${dirname(
+          path
+        )}/${basename(path, '.ts')}";`;
+      })
+      .join('\n');
 
-  const contents = paths
-    .map((path) => {
-      return `export * as ${basename(path, '.css.ts')} from "../${dirname(
-        path
-      )}/${basename(path, '.ts')}";`;
-    })
-    .join('\n');
-
-  writeFileSync('styles/registry.ts', contents, { encoding: 'utf8' });
-};
-
-const watcher = watch('app/**/*.css.ts', { persistent: watchMode })
-  .on('add', (path) => {
-    paths.push(path);
-    buildRegistry();
-  })
-  .on('unlink', (path) => {
-    paths.splice(paths.indexOf(path), 1);
-    buildRegistry();
-  })
-  .on('ready', () => {
-    ready = true;
-    buildRegistry();
-    buildBundle({
-      watch: watchMode,
+    await writeFile('styles/registry.ts', contents, { encoding: 'utf8' });
+    await buildBundle({
       clean: !watchMode,
       entry: ['styles/index.ts'],
-      outDir: 'app/styles',
+      outDir: '.styles',
       splitting: false,
       sourcemap: true,
-      dts: true,
+      dts: { resolve: true },
       format: 'cjs',
+      loader: ASSET_FILE_TYPES.reduce(
+        (acc, ft) => ({ ...acc, [`.${ft}`]: 'file' }),
+        {}
+      ),
       esbuildPlugins: [
         vanillaExtractPlugin({
           identifiers: watchMode ? 'debug' : 'short',
         }) as any,
       ],
     });
-  });
+    await copyfiles(
+      [
+        ...ASSET_FILE_TYPES.map((ft) => `.styles/*.${ft}`),
+        'public/build/_assets',
+      ],
+      {
+        flat: true,
+        up: true,
+        soft: true,
+      }
+    );
+    await copyfiles(
+      [
+        '.styles/*.js',
+        '.styles/*.d.ts',
+        '.styles/*.css',
+        '.styles/*.map',
+        'app/styles',
+      ],
+      {
+        flat: true,
+        up: true,
+      }
+    );
+  } catch (err) {
+    console.error('Unable to build');
+    console.error(err);
 
-if (watchMode) {
-  watcher.on('change', () => {
-    // Sometimes watch can break if there's a compilation error. Touch the registry to force a rebuild.
-    const time = new Date();
-    utimesSync('styles/registry.ts', time, time);
+    if (!watchMode) {
+      process.exit(1);
+    }
+  }
+};
+
+watch('app/**/*.css.ts', { persistent: watchMode })
+  .on('add', (path) => {
+    paths.push(path);
+    build();
+  })
+  .on('unlink', (path) => {
+    paths.splice(paths.indexOf(path), 1);
+    build();
+  })
+  .on('change', () => {
+    build();
+  })
+  .on('ready', () => {
+    ready = true;
+    build();
   });
-}
