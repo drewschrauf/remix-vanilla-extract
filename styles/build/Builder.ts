@@ -1,5 +1,4 @@
 import { vanillaExtractPlugin } from '@vanilla-extract/esbuild-plugin';
-import { watch } from 'chokidar';
 import { writeFile } from 'fs/promises';
 import { basename, dirname } from 'path';
 import { build as buildBundle } from 'tsup';
@@ -7,31 +6,35 @@ import { ASSET_FILE_TYPES } from './constants';
 import { copyAssets, copyBundle } from './copy';
 
 export default class Builder {
+  private watchMode: boolean;
+  private onError: (err: unknown) => void;
   private ready = false;
   private paths: string[] = [];
 
-  constructor(private watchMode: boolean) {}
-
-  public start() {
-    watch('app/**/*.css.ts', { persistent: this.watchMode })
-      .on('add', (path) => {
-        this.paths.push(path);
-        this.build();
-      })
-      .on('unlink', (path) => {
-        this.paths.splice(this.paths.indexOf(path), 1);
-        this.build();
-      })
-      .on('change', () => {
-        this.build();
-      })
-      .on('ready', () => {
-        this.ready = true;
-        this.build();
-      });
+  constructor({
+    watchMode,
+    onError,
+  }: {
+    watchMode: boolean;
+    onError: (err: unknown) => void;
+  }) {
+    this.watchMode = watchMode;
+    this.onError = onError;
   }
 
-  private async build() {
+  public setReady() {
+    this.ready = true;
+  }
+
+  public registerPath(path: string) {
+    this.paths.push(path);
+  }
+
+  public unregisterPath(path: string) {
+    this.paths.splice(this.paths.indexOf(path), 1);
+  }
+
+  public async build() {
     try {
       if (!this.ready) return;
 
@@ -43,9 +46,7 @@ export default class Builder {
       console.error('Unable to build');
       console.error(err);
 
-      if (!this.watchMode) {
-        process.exit(1);
-      }
+      this.onError(err);
     }
   }
 
