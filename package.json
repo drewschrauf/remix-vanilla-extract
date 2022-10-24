@@ -5,10 +5,11 @@
     "*.css.ts"
   ],
   "scripts": {
-    "build": "yarn css && tsc -b && remix build && yarn css --copy-files-only",
-    "dev": "concurrently \"yarn css --watch\" \"remix dev\"",
     "start": "remix-serve build",
-    "css": "ts-node ./styles/buildStyles.ts"
+    "build": "yarn css && tsc -b && remix build && yarn css --copy-assets-only",
+    "dev": "concurrently \"yarn css --watch\" \"remix dev\"",
+    "css": "ts-node ./styles/build",
+    "clean": "rm -rf .styles styles/registry.ts app/styles build public/build"
   },
   "dependencies": {
     "@remix-run/node": "^1.7.0",
